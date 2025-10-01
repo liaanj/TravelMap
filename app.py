@@ -1,7 +1,5 @@
 from flask import Flask, render_template, jsonify, request
 import pandas as pd
-import json
-
 app = Flask(__name__)
 
 # 全局变量存储景区数据
@@ -146,3 +144,4 @@ if __name__ == '__main__':
     # 启动应用前加载数据
     加载景区数据()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
