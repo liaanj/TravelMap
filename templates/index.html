@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国A级景区地图</title>
+    <style>
+        :root {
+            --map-width: 100vw;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            z-index: 1000;
+            max-width: calc(var(--map-width, 75vw) - 60px);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .control-group select, .control-group input {
+            padding: 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: var(--map-width);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .stats h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .stat-item {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* 移除右侧侧栏相关样式 */
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            :root {
+                --map-width: 100vw;
+                --sidebar-width: 100vw;
+            }
+            
+            .map-container {
+                height: 60vh;
+            }
+            
+            .sidebar {
+                position: relative;
+                height: 40vh;
+                border-left: none;
+                border-top: 2px solid #e1e5e9;
+                top: 60vh;
+            }
+            
+            .resize-handle {
+                display: none;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                max-width: calc(100vw - 40px);
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            .stats {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                right: auto;
+                width: 200px;
+                z-index: 1001;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label for="levelSelect">等级 (及以上)</label>
+            <select id="levelSelect">
+                <option value="">全部等级</option>
+                <option value="5A">5A及以上</option>
+                <option value="4A" selected>4A及以上</option>
+                <option value="3A">3A及以上</option>
+                <option value="2A">2A及以上</option>
+                <option value="A">A及以上</option>
+            </select>
+        </div>
+        <button class="btn" id="reloadBtn">刷新</button>
+        <button class="btn" onclick="清除标记()">清空</button>
+    </div>
+    
+    <div class="map-container">
+        <div id="mapContainer"></div>
+    </div>
+    
+    <div class="stats" style="right: 20px; bottom: 20px;">
+        <div class="stat-item">数量: <span class="stat-value" id="totalCount">0</span></div>
+        <div class="stat-item">范围: <span class="stat-value" id="selectedRegion">当前视口</span></div>
+        <div class="stat-item">等级: <span class="stat-value" id="selectedLevel">全部</span></div>
+    </div>
+    
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>正在加载景区数据...</p>
+    </div>
+
+    <script>
+        // Leaflet地图实例
+        let map;
+        let markersLayer;
+        
+        // 初始化地图
+        function 初始化地图() {
+            map = L.map('mapContainer').setView([37.550339, 104.114129], 5);
+            
+            // 添加地图图层
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // 创建标记图层组
+            markersLayer = L.layerGroup().addTo(map);
+        }
+        
+        // 加载景区数据
+        let 当前请求控制器 = null;
+        let 加载定时器 = null;
+
+        async function 加载景区数据() {
+            const 等级 = document.getElementById('levelSelect').value;
+            const bounds = map.getBounds();
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+            
+            显示加载中(true);
+            
+            try {
+                const params = new URLSearchParams({
+                    等级: 等级 || '',
+                    minLng: southWest.lng,
+                    minLat: southWest.lat,
+                    maxLng: northEast.lng,
+                    maxLat: northEast.lat,
+                    limit: '13000'
+                });
+                // 取消上一次请求
+                if (当前请求控制器) 当前请求控制器.abort();
+                当前请求控制器 = new AbortController();
+                const url = `/api/景区数据?${params.toString()}`;
+                const response = await fetch(url, { signal: 当前请求控制器.signal });
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert('数据加载失败: ' + result.error);
+                    return;
+                }
+                
+                // 清除现有标记
+                清除标记();
+                
+                // 添加新标记
+                const 景区数据 = result.data;
+                const 坐标组 = [];
+                
+                景区数据.forEach(景区 => {
+                    const marker = 添加标记(景区);
+                    坐标组.push([景区.lat, 景区.lng]);
+                });
+                
+                // 更新统计信息
+                const 等级显示 = 等级 ? `${等级}及以上` : '全部';
+                更新统计信息(result.total, '当前视口', 等级显示);
+                
+                // 不再自动 fitBounds，避免触发 moveend 循环
+                
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                alert('数据加载失败，请检查网络连接');
+            } finally {
+                显示加载中(false);
+            }
+        }
+
+        // 防抖封装
+        function 防抖加载() {
+            if (加载定时器) clearTimeout(加载定时器);
+            加载定时器 = setTimeout(加载景区数据, 250);
+        }
+        
+        // 添加地图标记
+        function 添加标记(景区) {
+            const 颜色 = 获取等级颜色(景区.level);
+            
+            // 创建自定义图标
+            const customIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    background-color: ${颜色};
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 10px;
+                ">${景区.level}</div>`,
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+            
+            const marker = L.marker([景区.lat, 景区.lng], {icon: customIcon, title: 景区.name});
+            // 悬浮提示
+            marker.bindTooltip(景区.name, {permanent: false, direction: 'top', offset: [0, -15]});
+            // 点击仅显示名称
+            marker.bindPopup(`<div style="font-family: Arial, sans-serif; font-size: 14px;">${景区.name}</div>`);
+            // 点击跳转新标签页（小红书搜索）
+            marker.on('click', function() {
+                const url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(景区.name)}`;
+                window.open(url, '_blank');
+            });
+            
+            marker.addTo(markersLayer);
+            
+            return marker;
+        }
+        
+        // 获取等级对应的颜色
+        function 获取等级颜色(等级) {
+            const 颜色映射 = {
+                '5A': '#ff4757',  // 红色
+                '4A': '#ff6b35',  // 橙色  
+                '3A': '#f39c12',  // 黄色
+                '2A': '#2ecc71',  // 绿色
+                'A': '#3498db'    // 蓝色
+            };
+            return 颜色映射[等级] || '#95a5a6';
+        }
+        
+        // 清除所有标记
+        function 清除标记() {
+            markersLayer.clearLayers();
+        }
+        
+        // 更新统计信息
+        function 更新统计信息(总数, 地区, 等级) {
+            document.getElementById('totalCount').textContent = 总数;
+            document.getElementById('selectedRegion').textContent = 地区 || '全国';
+            document.getElementById('selectedLevel').textContent = 等级 || '全部';
+        }
+        
+        // 显示/隐藏加载状态（禁用加载圈）
+        function 显示加载中(显示) {
+            return;
+        }
+        
+        // 清理已移除功能的遗留代码
+        
+        // 页面加载完成后初始化
+        window.onload = function() {
+            初始化地图();
+            加载景区数据();
+            // 交互事件：视口或等级变化时重载
+            map.on('moveend', 防抖加载);
+            map.on('zoomend', 防抖加载);
+            document.getElementById('levelSelect').addEventListener('change', 加载景区数据);
+            document.getElementById('reloadBtn').addEventListener('click', 加载景区数据);
+        };
+    </script>
+</body>
+</html>
