@@ -234,6 +234,9 @@
         let isDragging = false;
         let lastDragTime = 0;
         const markerMap = new Map(); // key -> { label, tip? }
+        // 标记增量更新令牌与目标键集合（防止分片插入与快速切换导致的残留）
+        let 当前更新令牌 = 0;
+        let 当前目标键集合 = new Set();
         
         const 调度 = (fn) => {
             if (window.requestIdleCallback) return requestIdleCallback(fn, { timeout: 200 });
@@ -301,6 +304,15 @@
             }
         }
 
+        // 等级切换：先中止旧请求、清除标记、递增令牌，再加载
+        function 等级切换刷新(){
+            try { if (当前请求控制器) 当前请求控制器.abort(); } catch(e) {}
+            清除标记();
+            当前目标键集合 = new Set();
+            当前更新令牌++;
+            加载景区数据();
+        }
+
         // 防抖封装
         function 防抖加载() {
             if (加载定时器) clearTimeout(加载定时器);
@@ -309,7 +321,9 @@
         
         // 生成唯一键
         function 生成键(景区) {
-            return `${景区.lng},${景区.lat},${景区.name}`;
+            const 名称 = String(景区.name || '').trim();
+            const 等级标准 = 标准化等级文本(景区.level);
+            return `${景区.lng},${景区.lat},${名称},${等级标准}`;
         }
 
         // 移除所有悬浮提示（提高拖动/缩放时性能）
@@ -319,37 +333,57 @@
                     map.removeOverlay(item.tip);
                     item.tip = null;
                 }
+                if (item.label && item.label._tip) {
+                    try { map.removeOverlay(item.label._tip); } catch(e) {}
+                    item.label._tip = null;
+                }
             }
         }
 
         // 批量、增量更新标记（不聚合）
         function 更新标记(列表) {
+            // 增量更新令牌，取消旧批次的分片插入
+            const myToken = ++当前更新令牌;
+
             const 新键集合 = new Set();
             for (const item of (列表 || [])) {
                 新键集合.add(生成键(item));
             }
-            // 移除不在当前视口数据中的标记
+            // 记录当前目标键集合，供后续分片插入期间校验
+            当前目标键集合 = 新键集合;
+
+            // 移除不在当前集合中的标记（并可靠清理悬浮提示）
             for (const [key, value] of markerMap.entries()) {
                 if (!新键集合.has(key)) {
                     if (value.tip) map.removeOverlay(value.tip);
+                    if (value.label && value.label._tip) {
+                        map.removeOverlay(value.label._tip);
+                        value.label._tip = null;
+                    }
                     if (value.label) map.removeOverlay(value.label);
                     markerMap.delete(key);
                 }
             }
+
             // 仅添加缺失的，分片插入减少主线程阻塞
             const 待添加 = (列表 || []).filter(item => !markerMap.has(生成键(item)));
             const 分片大小 = 500;
             let 索引 = 0;
             function 分片插入() {
+                // 令牌校验，防止旧批次继续插入
+                if (myToken !== 当前更新令牌) return;
                 const 结束 = Math.min(索引 + 分片大小, 待添加.length);
                 for (let i = 索引; i < 结束; i++) {
+                    if (myToken !== 当前更新令牌) return;
                     const item = 待添加[i];
                     const key = 生成键(item);
-                    const 标注 = 创建标注(item);
+                    // 目标集合二次校验，防止切换等级后旧项混入
+                    if (!当前目标键集合.has(key)) continue;
+                    const 标注 = 创建标注(item, myToken);
                     markerMap.set(key, 标注);
                 }
                 索引 = 结束;
-                if (索引 < 待添加.length) {
+                if (索引 < 待添加.length && myToken === 当前更新令牌) {
                     调度(分片插入);
                 }
             }
@@ -357,23 +391,9 @@
         }
         
         // 创建单个标注（仅创建圆点标签；提示在悬浮时动态创建与销毁）
-        function 创建标注(景区) {
-            const 颜色 = 获取等级颜色(景区.level);
+        function 创建标注(景区, token) {
             const point = new BMapGL.Point(景区.lng, 景区.lat);
-            const html = `<div style="
-                    background-color: ${颜色};
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    border: 3px solid white;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 10px;
-                ">${景区.level}</div>`;
+            const html = 生成标注HTML(景区.level);
 
             const label = new BMapGL.Label(html, {
                 position: point,
@@ -402,7 +422,7 @@
                     padding: '4px 8px',
                     fontSize: '12px',
                     color: '#333',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
                     transform: 'translateX(-50%)',
                     whiteSpace: 'nowrap',
                     pointerEvents: 'none',
@@ -412,12 +432,18 @@
                 map.addOverlay(tip);
                 const entry = markerMap.get(生成键(景区));
                 if (entry) entry.tip = tip;
+                // 记录到 label 上，方便强制清理
+                try { label._tip = tip; } catch(e) {}
             });
             label.addEventListener('mouseout', function() {
                 const entry = markerMap.get(生成键(景区));
                 if (entry && entry.tip) {
-                    map.removeOverlay(entry.tip);
+                    try { map.removeOverlay(entry.tip); } catch(e) {}
                     entry.tip = null;
+                }
+                if (label && label._tip) {
+                    try { map.removeOverlay(label._tip); } catch(e) {}
+                    label._tip = null;
                 }
             });
 
@@ -433,6 +459,35 @@
         }
         
         // 获取等级对应的颜色
+        function 生成标注HTML(等级){
+            const 颜色 = 获取等级颜色(等级);
+            const 文本 = 标准化等级文本(等级);
+            return `<div style="
+                    background-color: ${颜色};
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 10px;
+                ">${文本}</div>`;
+        }
+
+        function 标准化等级文本(等级){
+            const s = String(等级 || '').toUpperCase().replace('Ａ','A').replace('级','').trim();
+            if (!s) return '';
+            // 将 AAAA 等写法规整为 4A
+            if (/^A{2,5}$/.test(s)) return `${s.length}A`;
+            // 将 4A级 / 5A景区 等提取数字A
+            const m = s.match(/(5A|4A|3A|2A|A)/);
+            return m ? m[1] : s;
+        }
+
         function 获取等级颜色(等级) {
             const 颜色映射 = {
                 '5A': '#ff4757',  // 红色
@@ -525,7 +580,8 @@
                 lastDragTime = Date.now();
                 防抖加载();
             });
-            document.getElementById('levelSelect').addEventListener('change', 加载景区数据);
+            document.getElementById('levelSelect').addEventListener('change', 等级切换刷新);
+
             // 监听窗口尺寸变化
             window.addEventListener('resize', 监听窗口尺寸变化);
 
