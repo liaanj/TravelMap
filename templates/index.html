@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国A级景区地图</title>
+    <style>
+        :root {
+            --map-width: 100vw;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 16px; /* 两个控件左右并列，拉开一些间距 */
+            align-items: flex-start; /* 保持label+select垂直排布 */
+            flex-wrap: nowrap;
+            z-index: 1000;
+            max-width: calc(100vw - 20px);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .control-group select, .control-group input {
+            padding: 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: var(--map-width);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .stats {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 6px 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: auto;
+            font-size: 12px;
+            line-height: 1.2;
+            display: inline-flex;
+            gap: 10px;
+        }
+        
+        .stats h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .stat-item {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* 移除右侧侧栏相关样式 */
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 640px) {
+            :root {
+                --map-width: 100vw;
+                --sidebar-width: 100vw;
+            }
+            
+            /* 移除移动端缩短地图高度，保持 100vh 全屏 */
+            /* 保留控制条自适应布局 */
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                max-width: calc(100vw - 40px);
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            /* 统计卡片始终固定在右下角 */
+            .stats {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                left: auto;
+                width: 200px;
+                z-index: 1001;
+            }
+        }
+    </style>
+    <script type="text/javascript" src="//api.map.baidu.com/api?type=webgl&v=1.0&ak=VXrxLmEeOb7TFUA7SzNj4OZpA3fHmA9K"></script>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group" style="gap:4px;">
+            <label for="basemapSelect">底图</label>
+            <select id="basemapSelect">
+                <option value="vector" selected>矢量</option>
+                <option value="satellite">卫星</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="levelSelect">等级</label>
+            <select id="levelSelect">
+                <option value="">全部</option>
+                <option value="5A" selected>5A及以上</option>
+                <option value="4A">4A及以上</option>
+                <option value="3A">3A及以上</option>
+                <option value="2A">2A及以上</option>
+                <option value="A">A及以上</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="map-container">
+        <div id="mapContainer"></div>
+    </div>
+    
+    <div class="stats" style="right: 20px; bottom: 20px;">
+        <div class="stat-item">数量: <span class="stat-value" id="totalCount">0</span></div>
+        <div class="stat-item">范围: <span class="stat-value" id="selectedRegion">当前视口</span></div>
+        <div class="stat-item">等级: <span class="stat-value" id="selectedLevel">全部</span></div>
+    </div>
+    
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>正在加载景区数据...</p>
+    </div>
+
+    <script>
+        // 百度地图GL 实例
+        let map;
+        let isDragging = false;
+        let lastDragTime = 0;
+        const markerMap = new Map(); // key -> { label, tip? }
+        // 标记增量更新令牌与目标键集合（防止分片插入与快速切换导致的残留）
+        let 当前更新令牌 = 0;
+        let 当前目标键集合 = new Set();
+        
+        const 调度 = (fn) => {
+            if (window.requestIdleCallback) return requestIdleCallback(fn, { timeout: 200 });
+            return requestAnimationFrame(fn);
+        };
+        
+        // 初始化地图
+        function 初始化地图() {
+            map = new BMapGL.Map('mapContainer');
+            const centerPoint = new BMapGL.Point(104.114129, 37.550339); // 中国中心
+            map.centerAndZoom(centerPoint, 5);
+            map.enableScrollWheelZoom(true);
+            // 鼠标指针：地图默认箭头
+            if (map.setDefaultCursor) map.setDefaultCursor('default');
+            if (map.setDraggingCursor) map.setDraggingCursor('default');
+
+            // 初始化底图与图层
+            初始化底图与图层();
+        }
+        
+        // 加载景区数据
+        let 当前请求控制器 = null;
+        let 加载定时器 = null;
+
+        async function 加载景区数据() {
+            const 等级 = document.getElementById('levelSelect').value;
+            const bounds = map.getBounds();
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+            
+            显示加载中(true);
+            
+            try {
+                const params = new URLSearchParams({
+                    等级: 等级 || '',
+                    minLng: southWest.lng,
+                    minLat: southWest.lat,
+                    maxLng: northEast.lng,
+                    maxLat: northEast.lat,
+                    limit: '13000'
+                });
+                if (当前请求控制器) 当前请求控制器.abort();
+                当前请求控制器 = new AbortController();
+                const url = `/api/景区数据?${params.toString()}`;
+                const response = await fetch(url, { signal: 当前请求控制器.signal });
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert('数据加载失败: ' + result.error);
+                    return;
+                }
+                
+                更新标记(result.data);
+                
+                const 等级显示 = 等级 ? `${等级}及以上` : '全部';
+                更新统计信息(result.total, '当前视口', 等级显示);
+                
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('加载数据失败:', error);
+                    alert('数据加载失败，请检查网络连接');
+                }
+            } finally {
+                显示加载中(false);
+            }
+        }
+
+        // 等级切换：先中止旧请求、清除标记、递增令牌，再加载
+        function 等级切换刷新(){
+            try { if (当前请求控制器) 当前请求控制器.abort(); } catch(e) {}
+            清除标记();
+            当前目标键集合 = new Set();
+            当前更新令牌++;
+            加载景区数据();
+        }
+
+        // 防抖封装
+        function 防抖加载() {
+            if (加载定时器) clearTimeout(加载定时器);
+            加载定时器 = setTimeout(加载景区数据, 250);
+        }
+        
+        // 生成唯一键
+        function 生成键(景区) {
+            const 名称 = String(景区.name || '').trim();
+            const 等级标准 = 标准化等级文本(景区.level);
+            return `${景区.lng},${景区.lat},${名称},${等级标准}`;
+        }
+
+        // 移除所有悬浮提示（提高拖动/缩放时性能）
+        function 移除所有提示() {
+            for (const item of markerMap.values()) {
+                if (item.tip) {
+                    map.removeOverlay(item.tip);
+                    item.tip = null;
+                }
+                if (item.label && item.label._tip) {
+                    try { map.removeOverlay(item.label._tip); } catch(e) {}
+                    item.label._tip = null;
+                }
+            }
+        }
+
+        // 批量、增量更新标记（不聚合）
+        function 更新标记(列表) {
+            // 增量更新令牌，取消旧批次的分片插入
+            const myToken = ++当前更新令牌;
+
+            const 新键集合 = new Set();
+            for (const item of (列表 || [])) {
+                新键集合.add(生成键(item));
+            }
+            // 记录当前目标键集合，供后续分片插入期间校验
+            当前目标键集合 = 新键集合;
+
+            // 移除不在当前集合中的标记（并可靠清理悬浮提示）
+            for (const [key, value] of markerMap.entries()) {
+                if (!新键集合.has(key)) {
+                    if (value.tip) map.removeOverlay(value.tip);
+                    if (value.label && value.label._tip) {
+                        map.removeOverlay(value.label._tip);
+                        value.label._tip = null;
+                    }
+                    if (value.label) map.removeOverlay(value.label);
+                    markerMap.delete(key);
+                }
+            }
+
+            // 仅添加缺失的，分片插入减少主线程阻塞
+            const 待添加 = (列表 || []).filter(item => !markerMap.has(生成键(item)));
+            const 分片大小 = 500;
+            let 索引 = 0;
+            function 分片插入() {
+                // 令牌校验，防止旧批次继续插入
+                if (myToken !== 当前更新令牌) return;
+                const 结束 = Math.min(索引 + 分片大小, 待添加.length);
+                for (let i = 索引; i < 结束; i++) {
+                    if (myToken !== 当前更新令牌) return;
+                    const item = 待添加[i];
+                    const key = 生成键(item);
+                    // 目标集合二次校验，防止切换等级后旧项混入
+                    if (!当前目标键集合.has(key)) continue;
+                    const 标注 = 创建标注(item, myToken);
+                    markerMap.set(key, 标注);
+                }
+                索引 = 结束;
+                if (索引 < 待添加.length && myToken === 当前更新令牌) {
+                    调度(分片插入);
+                }
+            }
+            分片插入();
+        }
+        
+        // 创建单个标注（仅创建圆点标签；提示在悬浮时动态创建与销毁）
+        function 创建标注(景区, token) {
+            const point = new BMapGL.Point(景区.lng, 景区.lat);
+            const html = 生成标注HTML(景区.level);
+
+            const label = new BMapGL.Label(html, {
+                position: point,
+                offset: new BMapGL.Size(-13, -13)
+            });
+            label.setStyle({
+                border: 'none',
+                background: 'transparent',
+                padding: '0',
+                cursor: 'pointer',
+                zIndex: 99999
+            });
+            label.setTitle(景区.name);
+
+            // 悬浮时创建提示；移出时销毁提示（减少 overlay 数量）
+            label.addEventListener('mouseover', function() {
+                if (isDragging) return;
+                const tip = new BMapGL.Label(景区.name, {
+                    position: point,
+                    offset: new BMapGL.Size(0, -42)
+                });
+                tip.setStyle({
+                    background: 'rgba(255,255,255,0.95)',
+                    border: '1px solid #e1e5e9',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    color: '#333',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                    transform: 'translateX(-50%)',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                    zIndex: 100000
+                });
+                if (tip.setZIndex) tip.setZIndex(100000);
+                map.addOverlay(tip);
+                const entry = markerMap.get(生成键(景区));
+                if (entry) entry.tip = tip;
+                // 记录到 label 上，方便强制清理
+                try { label._tip = tip; } catch(e) {}
+            });
+            label.addEventListener('mouseout', function() {
+                const entry = markerMap.get(生成键(景区));
+                if (entry && entry.tip) {
+                    try { map.removeOverlay(entry.tip); } catch(e) {}
+                    entry.tip = null;
+                }
+                if (label && label._tip) {
+                    try { map.removeOverlay(label._tip); } catch(e) {}
+                    label._tip = null;
+                }
+            });
+
+            // 避免拖动结束触发点击
+            label.addEventListener('click', function() {
+                if (isDragging || (Date.now() - lastDragTime) < 250) return;
+                const url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(景区.name)}`;
+                window.open(url, '_blank');
+            });
+
+            map.addOverlay(label);
+            return { label, tip: null };
+        }
+        
+        // 获取等级对应的颜色
+        function 生成标注HTML(等级){
+            const 颜色 = 获取等级颜色(等级);
+            const 文本 = 标准化等级文本(等级);
+            return `<div style="
+                    background-color: ${颜色};
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 10px;
+                ">${文本}</div>`;
+        }
+
+        function 标准化等级文本(等级){
+            const s = String(等级 || '').toUpperCase().replace('Ａ','A').replace('级','').trim();
+            if (!s) return '';
+            // 将 AAAA 等写法规整为 4A
+            if (/^A{2,5}$/.test(s)) return `${s.length}A`;
+            // 将 4A级 / 5A景区 等提取数字A
+            const m = s.match(/(5A|4A|3A|2A|A)/);
+            return m ? m[1] : s;
+        }
+
+        function 获取等级颜色(等级) {
+            const 颜色映射 = {
+                '5A': '#ff4757',  // 红色
+                '4A': '#ff6b35',  // 橙色  
+                '3A': '#f39c12',  // 黄色
+                '2A': '#2ecc71',  // 绿色
+                'A': '#3498db'    // 蓝色
+            };
+            return 颜色映射[等级] || '#95a5a6';
+        }
+        
+        // 清除所有标记
+        function 清除标记() {
+            for (const { label, tip } of markerMap.values()) {
+                if (tip) map.removeOverlay(tip);
+                if (label) map.removeOverlay(label);
+            }
+            markerMap.clear();
+        }
+        
+        // 更新统计信息
+        function 更新统计信息(总数, 地区, 等级) {
+            document.getElementById('totalCount').textContent = 总数;
+            document.getElementById('selectedRegion').textContent = 地区 || '全国';
+            document.getElementById('selectedLevel').textContent = 等级 || '全部';
+        }
+        
+        // 显示/隐藏加载状态（禁用加载圈）
+        function 显示加载中(显示) {
+            return;
+        }
+        
+        // 尺寸变化时校正地图视图，避免标注错位或右下角偏移
+        let 尺寸定时器 = null;
+        function 处理尺寸变化() {
+            if (!map) return;
+            // 清除悬浮提示，避免旧像素位置残留
+            移除所有提示();
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            // 通过重新设置中心+缩放强制引擎重算像素坐标
+            map.centerAndZoom(center, zoom);
+        }
+        function 监听窗口尺寸变化() {
+            if (尺寸定时器) clearTimeout(尺寸定时器);
+            尺寸定时器 = setTimeout(处理尺寸变化, 150);
+        }
+        
+        // 图层：底图切换与路况
+        let trafficLayer = null;
+        function 初始化底图与图层() {
+            // 默认矢量底图，无需手动添加
+            // 路况图层实例（懒创建）
+            trafficLayer = new BMapGL.TrafficLayer({ predictDate: 0 });
+        }
+        function 切换底图(type) {
+            if (type === 'satellite') {
+                map.setMapType(BMAP_SATELLITE_MAP);
+            } else {
+                map.setMapType(BMAP_NORMAL_MAP);
+            }
+        }
+        function 切换路况(enable) {
+            if (enable) {
+                map.addTileLayer(trafficLayer);
+            } else {
+                map.removeTileLayer(trafficLayer);
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.onload = function() {
+            初始化地图();
+            加载景区数据();
+            // 交互事件：视口或等级变化时重载
+            map.addEventListener('zoomstart', function(){
+                isDragging = true;
+                移除所有提示();
+            });
+            map.addEventListener('zoomend', function(){
+                isDragging = false;
+                防抖加载();
+            });
+            map.addEventListener('dragstart', function() {
+                isDragging = true;
+                移除所有提示();
+            });
+            map.addEventListener('dragend', function() {
+                isDragging = false;
+                lastDragTime = Date.now();
+                防抖加载();
+            });
+            document.getElementById('levelSelect').addEventListener('change', 等级切换刷新);
+
+            // 监听窗口尺寸变化
+            window.addEventListener('resize', 监听窗口尺寸变化);
+
+            // 底图控制
+            const basemapSelect = document.getElementById('basemapSelect');
+            basemapSelect.addEventListener('change', () => 切换底图(basemapSelect.value));
+        };
+    </script>
+</body>
+</html>
