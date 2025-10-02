@@ -18,11 +18,13 @@
 4. **打开分屏**：点击edge右侧三个点打开分屏
 5. **打开小红书**：搜索打开小红书并登录
 6. **打开右侧的左侧链接**
-   https://github.com/liaanj/TravelMap/blob/main/doc/1759336432594.png
-   https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-34-22.png
-   https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-06.png
-   https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-54.png
-   https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-38-41.png
+
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/1759336432594.png" width="170px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-34-22.png" width="170px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-06.png" width="170px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-54.png" width="170px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-38-41.png" width="170px">
+
 
 
 ## 数据说明
