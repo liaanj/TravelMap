@@ -19,11 +19,11 @@
 5. **打开小红书**：搜索打开小红书并登录
 6. **打开右侧的左侧链接**
 
-<img src="https://github.com/liaanj/TravelMap/blob/main/doc/1759336432594.png" width="170px">
-<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-34-22.png" width="170px">
-<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-06.png" width="170px">
-<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-54.png" width="170px">
-<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-38-41.png" width="170px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/1759336432594.png" width="370px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-34-22.png" width="370px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-06.png" width="370px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-37-54.png" width="370px">
+<img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-38-41.png" width="370px">
 
 
 
