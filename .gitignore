@@ -1,0 +1,65 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+.env
+.env.*
+.python-version
+
+# Packaging / build
+dist/
+build/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+*.egg
+
+# Nuitka
+nuitka-crash-report.xml
+*.build/
+*.dist/
+.onefile-build/
+
+# Test / coverage / type-checking
+.pytest_cache/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Caches
+.cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Misc
+__pypackages__/
+*.spec
+
+
+
+
