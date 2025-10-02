@@ -49,7 +49,9 @@ def 加载景区数据():
 @app.route('/')
 def 主页():
     """主页面"""
-    return render_template('index.html')
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(keyword in user_agent for keyword in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'windows phone'])
+    return render_template('index.html', is_mobile=is_mobile)
 
 def 标准化等级(level_value: str) -> str:
     """将各种可能的等级表示归一化为 A/2A/3A/4A/5A"""

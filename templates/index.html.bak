@@ -129,32 +129,6 @@
         }
         
         /* 移除右侧侧栏相关样式 */
-        .fullscreen-btn {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            padding: 10px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            cursor: pointer;
-            z-index: 1000;
-            font-size: 20px;
-            line-height: 1;
-            transition: all 0.3s ease;
-            display: none;
-        }
-        
-        .fullscreen-btn:hover {
-            background: rgba(255, 255, 255, 1);
-            transform: scale(1.05);
-        }
-        
-        .fullscreen-btn:active {
-            transform: scale(0.95);
-        }
-
         
         .loading {
             display: none;
@@ -191,48 +165,26 @@
                 --sidebar-width: 100vw;
             }
             
-            /* 移动端：缩小控制面板 */
+            /* 移除移动端缩短地图高度，保持 100vh 全屏 */
+            /* 保留控制条自适应布局 */
             .controls {
-                flex-direction: row;
-                align-items: center;
-                gap: 8px;
-                padding: 6px 8px;
-                top: 6px;
-                left: 6px;
-                max-width: calc(100vw - 12px);
-                border-radius: 6px;
+                flex-direction: column;
+                align-items: stretch;
+                max-width: calc(100vw - 40px);
             }
             
             .control-group {
-                gap: 2px;
+                width: 100%;
             }
             
-            .control-group label {
-                font-size: 11px;
-                font-weight: 500;
-            }
-            
-            .control-group select {
-                padding: 5px 6px;
-                font-size: 11px;
-                border-width: 1px;
-                border-radius: 4px;
-                min-width: 50px;
-                max-width: 70px;
-            }
-            
-            /* 移动端隐藏统计卡片 */
+            /* 统计卡片始终固定在右下角 */
             .stats {
-                display: none !important;
-            }
-            
-            /* 移动端显示全屏按钮 */
-            .fullscreen-btn {
-                display: block;
-                bottom: 8px;
-                right: 8px;
-                padding: 8px 10px;
-                font-size: 18px;
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                left: auto;
+                width: 200px;
+                z-index: 1001;
             }
         }
     </style>
@@ -270,7 +222,6 @@
         <div class="stat-item">等级: <span class="stat-value" id="selectedLevel">全部</span></div>
     </div>
     
-    <button class="fullscreen-btn" id="fullscreenBtn" title="全屏">⛶</button>
     
     <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -278,8 +229,6 @@
     </div>
 
     <script>
-        const IS_MOBILE = {{ 'true' if is_mobile else 'false' }};
-        
         // 百度地图GL 实例
         let map;
         let isDragging = false;
@@ -444,11 +393,11 @@
         // 创建单个标注（仅创建圆点标签；提示在悬浮时动态创建与销毁）
         function 创建标注(景区, token) {
             const point = new BMapGL.Point(景区.lng, 景区.lat);
-            const html = 生成标注HTML(景区.level, 景区.name);
+            const html = 生成标注HTML(景区.level);
 
             const label = new BMapGL.Label(html, {
                 position: point,
-                offset: IS_MOBILE ? new BMapGL.Size(-8, -28) : new BMapGL.Size(-13, -13)
+                offset: new BMapGL.Size(-13, -13)
             });
             label.setStyle({
                 border: 'none',
@@ -501,27 +450,8 @@
             // 避免拖动结束触发点击
             label.addEventListener('click', function() {
                 if (isDragging || (Date.now() - lastDragTime) < 250) return;
-                
-                if (IS_MOBILE) {
-                    // 移动端：直接打开小红书App
-                    const keyword = encodeURIComponent(景区.name);
-                    const appUrl = `xhsdiscover://search/result?keyword=${keyword}`;
-                    
-                    // 使用iframe打开，避免退出全屏
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = appUrl;
-                    document.body.appendChild(iframe);
-                    setTimeout(() => {
-                        try {
-                            document.body.removeChild(iframe);
-                        } catch(e) {}
-                    }, 1000);
-                } else {
-                    // PC端：在新窗口打开小红书网页版
-                    const url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(景区.name)}`;
-                    window.open(url, '_blank');
-                }
+                const url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(景区.name)}`;
+                window.open(url, '_blank');
             });
 
             map.addOverlay(label);
@@ -529,45 +459,10 @@
         }
         
         // 获取等级对应的颜色
-        function 生成标注HTML(等级, 名称){
+        function 生成标注HTML(等级){
             const 颜色 = 获取等级颜色(等级);
             const 文本 = 标准化等级文本(等级);
-            
-            if (IS_MOBILE) {
-                // 移动端：更小的圆点 + 下方名称
-                return `<div style="display: flex; flex-direction: column; align-items: center;">
-                    <div style="
-                        background-color: ${颜色};
-                        width: 16px;
-                        height: 16px;
-                        border-radius: 50%;
-                        border: 2px solid white;
-                        box-shadow: 0 1px 2px rgba(0,0,0,0.18);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-weight: bold;
-                        font-size: 8px;
-                    ">${文本}</div>
-                    <div style="
-                        margin-top: 2px;
-                        background: rgba(255,255,255,0.95);
-                        padding: 1px 4px;
-                        border-radius: 3px;
-                        font-size: 9px;
-                        color: #333;
-                        white-space: nowrap;
-                        box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-                        border: 1px solid #e1e5e9;
-                        max-width: 80px;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                    ">${名称}</div>
-                </div>`;
-            } else {
-                // PC端：只显示圆点
-                return `<div style="
+            return `<div style="
                     background-color: ${颜色};
                     width: 20px;
                     height: 20px;
@@ -581,7 +476,6 @@
                     font-weight: bold;
                     font-size: 10px;
                 ">${文本}</div>`;
-            }
         }
 
         function 标准化等级文本(等级){
@@ -666,16 +560,6 @@
 
         // 页面加载完成后初始化
         window.onload = function() {
-            // 移动端缩短下拉框文字
-            if (IS_MOBILE) {
-                const levelSelect = document.getElementById('levelSelect');
-                const options = levelSelect.options;
-                for (let i = 1; i < options.length; i++) {
-                    const value = options[i].value;
-                    options[i].text = value + '+';
-                }
-            }
-            
             初始化地图();
             加载景区数据();
             // 交互事件：视口或等级变化时重载
@@ -704,57 +588,6 @@
             // 底图控制
             const basemapSelect = document.getElementById('basemapSelect');
             basemapSelect.addEventListener('change', () => 切换底图(basemapSelect.value));
-            
-            // 全屏按钮功能
-            if (IS_MOBILE) {
-                const fullscreenBtn = document.getElementById('fullscreenBtn');
-                fullscreenBtn.addEventListener('click', function() {
-                    const elem = document.documentElement;
-                    
-                    if (!document.fullscreenElement && !document.webkitFullscreenElement && 
-                        !document.mozFullScreenElement && !document.msFullscreenElement) {
-                        // 进入全屏
-                        if (elem.requestFullscreen) {
-                            elem.requestFullscreen();
-                        } else if (elem.webkitRequestFullscreen) {
-                            elem.webkitRequestFullscreen();
-                        } else if (elem.mozRequestFullScreen) {
-                            elem.mozRequestFullScreen();
-                        } else if (elem.msRequestFullscreen) {
-                            elem.msRequestFullscreen();
-                        }
-                        fullscreenBtn.textContent = '⛶';
-                    } else {
-                        // 退出全屏
-                        if (document.exitFullscreen) {
-                            document.exitFullscreen();
-                        } else if (document.webkitExitFullscreen) {
-                            document.webkitExitFullscreen();
-                        } else if (document.mozCancelFullScreen) {
-                            document.mozCancelFullScreen();
-                        } else if (document.msExitFullscreen) {
-                            document.msExitFullscreen();
-                        }
-                        fullscreenBtn.textContent = '⛶';
-                    }
-                });
-                
-                // 监听全屏状态变化
-                document.addEventListener('fullscreenchange', updateFullscreenButton);
-                document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
-                document.addEventListener('mozfullscreenchange', updateFullscreenButton);
-                document.addEventListener('MSFullscreenChange', updateFullscreenButton);
-                
-                function updateFullscreenButton() {
-                    const fullscreenBtn = document.getElementById('fullscreenBtn');
-                    if (document.fullscreenElement || document.webkitFullscreenElement || 
-                        document.mozFullScreenElement || document.msFullscreenElement) {
-                        fullscreenBtn.textContent = '⛶';
-                    } else {
-                        fullscreenBtn.textContent = '⛶';
-                    }
-                }
-            }
         };
     </script>
 </body>

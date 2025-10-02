@@ -1,0 +1,88 @@
+Bug修复记录
+============
+
+日期：2025年
+
+## Bug #1: 点击景点退出全屏
+**问题描述：**
+移动端全屏模式下，点击景区标记后会自动退出全屏状态
+
+**原因分析：**
+使用 `window.location.href` 跳转会触发页面导航事件，导致浏览器退出全屏
+
+**解决方案：**
+改用隐藏的iframe来打开App URL Scheme，避免触发页面导航
+```javascript
+// 使用iframe打开，避免退出全屏
+const iframe = document.createElement('iframe');
+iframe.style.display = 'none';
+iframe.src = appUrl;
+document.body.appendChild(iframe);
+setTimeout(() => {
+    try {
+        document.body.removeChild(iframe);
+    } catch(e) {}
+}, 1000);
+```
+
+**修复状态：** ✅ 已修复
+**测试建议：** 移动端进入全屏后点击景区，应保持全屏状态
+
+
+## Bug #2: 移动端等级选择框UI太大
+**问题描述：**
+移动端屏幕较小，控制面板中的等级选择下拉框占用空间过大
+
+**解决方案：**
+1. 缩小select元素的尺寸和padding
+```css
+.control-group select {
+    padding: 5px 6px;      /* 从 6px 8px 改为 5px 6px */
+    font-size: 11px;       /* 从 12px 改为 11px */
+    min-width: 50px;       /* 设置最小宽度 */
+    max-width: 70px;       /* 限制最大宽度 */
+}
+```
+
+2. 动态缩短下拉选项文字（移动端）
+```javascript
+// "5A及以上" → "5A+"
+// "4A及以上" → "4A+"
+if (IS_MOBILE) {
+    const levelSelect = document.getElementById('levelSelect');
+    const options = levelSelect.options;
+    for (let i = 1; i < options.length; i++) {
+        const value = options[i].value;
+        options[i].text = value + '+';
+    }
+}
+```
+
+**修复状态：** ✅ 已修复
+**效果：** 移动端控制面板更加紧凑，占用屏幕空间更少
+
+
+## 技术要点
+
+1. **iframe方法的优势：**
+   - 不会触发页面导航
+   - 不会退出全屏模式
+   - 能够正常调用URL Scheme
+   - 1秒后自动清理，不影响DOM结构
+
+2. **移动端UI优化原则：**
+   - 使用相对单位和限制尺寸
+   - 动态调整内容文字长度
+   - 保持PC端不受影响
+
+3. **CSS媒体查询的应用：**
+   - 只在@media (max-width: 640px)内生效
+   - PC端保持原有样式
+
+## 相关文件
+- templates/index.html（主要修改文件）
+
+## 后续建议
+- 可以考虑添加底图选择框的相同优化
+- 可以测试更多移动设备的兼容性
+- 可以添加横屏/竖屏的不同适配
