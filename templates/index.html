@@ -429,6 +429,60 @@
     <script>
         const IS_MOBILE = {{ is_mobile|lower }};
         
+        // 微信浏览器检测与自动跳转
+        function isWeChatBrowser() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.indexOf('micromessenger') !== -1;
+        }
+        
+        function isAndroid() {
+            const ua = navigator.userAgent;
+            return /android|adr/gi.test(ua);
+        }
+        
+        function isIOS() {
+            const ua = navigator.userAgent;
+            return /iphone|ipod|ipad/gi.test(ua);
+        }
+        
+        function jumpToExternalBrowser() {
+            const currentUrl = window.location.href;
+            
+            if (isAndroid()) {
+                // 安卓：创建iframe触发跳转
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = currentUrl;
+                document.body.appendChild(iframe);
+                
+                // 500ms后尝试点击触发
+                setTimeout(function() {
+                    try {
+                        iframe.contentWindow.location.href = currentUrl;
+                    } catch(e) {}
+                }, 500);
+            } else if (isIOS()) {
+                // iOS：创建a标签触发跳转
+                const link = document.createElement('a');
+                link.href = currentUrl;
+                link.style.display = 'none';
+                link.id = 'wechatJumpLink';
+                document.body.appendChild(link);
+                
+                // 自动点击
+                setTimeout(function() {
+                    document.getElementById('wechatJumpLink').click();
+                }, 500);
+            }
+        }
+        
+        // 页面加载时检测微信浏览器并尝试跳转
+        if (isWeChatBrowser()) {
+            jumpToExternalBrowser();
+            // 如果在微信中，阻止后续初始化
+            throw new Error('WeChat browser detected, jumping to external browser...');
+        }
+        
         // 百度地图GL 实例
         let map;
         let isDragging = false;
@@ -821,7 +875,7 @@
             if (IS_MOBILE) {
                 steps.innerHTML = `
                     <ol class="welcome-steps">
-                        <li><strong>打开分屏：</strong>将网页与小红书分别打开</li>
+                        <li><strong>打开分屏：</strong>将此网页与小红书app通过手机分屏功能分别打开</li>
                         <li><strong>全屏按钮：</strong>点击右下角按钮进入全屏浏览</li>
                         <li><strong>点击景区：</strong>点击你感兴趣的景区会自动转跳小红书</li>
                     </ol>
@@ -854,7 +908,7 @@
             if (IS_MOBILE) {
                 steps.innerHTML = `
                     <ol class="welcome-steps">
-                        <li><strong>打开分屏：</strong>将网页与小红书通过分屏分别打开</li>
+                        <li><strong>打开分屏：</strong>将此网页与小红书app通过手机分屏功能分别打开</li>
                         <li><strong>全屏按钮：</strong>点击右下角按钮进入全屏浏览</li>
                         <li><strong>点击景区：</strong>点击你感兴趣的景区会自动转跳小红书</li>
                     </ol>
