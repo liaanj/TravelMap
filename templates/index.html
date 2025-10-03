@@ -693,7 +693,10 @@
 
             const label = new BMapGL.Label(html, {
                 position: point,
-                offset: IS_MOBILE ? new BMapGL.Size(-8, -28) : new BMapGL.Size(-13, -13)
+                // 移动端：容器固定为20x20，圆点在左上角(0,0)，圆点中心在(10,10)
+                // 要让圆点中心对齐地理坐标，offset应为(-10, -10)
+                // PC端：圆点20px内容 + 3px边框 = 26px总宽高，中心点offset为(-13, -13)
+                offset: IS_MOBILE ? new BMapGL.Size(-10, -10) : new BMapGL.Size(-13, -13)
             });
             label.setStyle({
                 border: 'none',
@@ -779,8 +782,8 @@
             const 文本 = 标准化等级文本(等级);
             
             if (IS_MOBILE) {
-                // 移动端：更小的圆点 + 下方名称
-                return `<div style="display: flex; flex-direction: column; align-items: center;">
+                // 移动端：使用绝对定位，圆点固定在左上角，名称在圆点下方居中
+                return `<div style="position: relative; width: 20px; height: 20px;">
                     <div style="
                         background-color: ${颜色};
                         width: 16px;
@@ -794,9 +797,15 @@
                         color: white;
                         font-weight: bold;
                         font-size: 8px;
+                        position: absolute;
+                        top: 0;
+                        left: 0;
                     ">${文本}</div>
                     <div style="
-                        margin-top: 2px;
+                        position: absolute;
+                        top: 22px;
+                        left: 50%;
+                        transform: translateX(-50%);
                         background: rgba(255,255,255,0.95);
                         padding: 1px 4px;
                         border-radius: 3px;
@@ -886,6 +895,8 @@
             if (尺寸定时器) clearTimeout(尺寸定时器);
             尺寸定时器 = setTimeout(处理尺寸变化, 150);
         }
+        
+
         
         // 图层：底图切换与路况
         let trafficLayer = null;
