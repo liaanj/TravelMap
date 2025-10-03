@@ -18,7 +18,7 @@
 
 ##手机端使用指南
 
-https://github.com/liaanj/TravelMap/blob/main/doc/22f076289777f40f7d1098eacc80cfd4.mp4
+https://github.com/user-attachments/assets/f94554fc-8138-4f7b-abd5-c80cb959d300
 
 ## 电脑端使用指南
 1.**使用edge打开网站**：打开 http://111.229.9.19:5000
