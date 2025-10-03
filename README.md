@@ -16,14 +16,16 @@
 
 网站上线完成，可以不用下载直接在线使用！
 
-## 使用指南
+##手机端使用指南
 
-1. **启动程序**：双击运行 `TravelMap.exe` 或在命令行中执行 `python app.py`。（可选）
-2. **打开edge浏览器**：输入以下网址: 127.0.0.1:5000（可选）
-3. **打开分屏**：点击edge右侧三个点打开分屏
-4. **打开小红书**：搜索打开小红书并登录
-5. **打开“打开右侧的左侧链接”**
-6. **点击左侧景点，右侧小红书会自动转跳**
+https://github.com/liaanj/TravelMap/blob/main/doc/22f076289777f40f7d1098eacc80cfd4.mp4
+
+## 电脑端使用指南
+1.**使用edge打开网站**：打开 http://111.229.9.19:5000
+1. **打开分屏**：点击edge右侧三个点打开分屏
+2. **打开小红书**：搜索打开小红书并登录
+3. **打开“打开右侧的左侧链接”**
+4. **点击左侧景点，右侧小红书会自动转跳**
 
 <img src="https://github.com/liaanj/TravelMap/blob/main/doc/1759336432594.png">
 <img src="https://github.com/liaanj/TravelMap/blob/main/doc/Snipaste_2025-10-02_00-34-22.png" >
