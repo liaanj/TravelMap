@@ -19,7 +19,7 @@
 ## 手机端使用指南
 
 https://github.com/user-attachments/assets/f94554fc-8138-4f7b-abd5-c80cb959d300
-
+<video src="https://github.com/user-attachments/assets/f94554fc-8138-4f7b-abd5-c80cb959d300" width="300" controls style="transform: rotate(90deg);"></video>
 ## 电脑端使用指南
 1.**使用edge打开网站**：打开 http://111.229.9.19:5000
 1. **打开分屏**：点击edge右侧三个点打开分屏
